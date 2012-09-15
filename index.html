@@ -1,17 +1,71 @@
 <html>
+<head>
+
+<script src="js/objectdetect.js"></script>
+<script src="js/objectdetect.frontalface.js"></script>
+
+<script src="http://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="js/jquery.objectdetect.js"></script>
+
+<script src="js/smoother.js"></script>
+
+</head>
+
+
 <body>
 	<video autoplay style="border: 1px solid #EEEEEE"></video>
+	<span id="detectRect" style="border:1px solid #5566CC;z-index:100;position:absolute;width:100px;height:100px;"></span>
 	<script>
-		var onFailSoHard = function(e) {
-			console.log('Reeeejected!', e);
-		};
-
 		window.URL = window.URL || window.webkitURL;
 		navigator.getUserMedia = navigator.getUserMedia
 				|| navigator.webkitGetUserMedia || navigator.mozGetUserMedia
 				|| navigator.msGetUserMedia;
 
 		var video = document.querySelector('video');
+		var smoother = new Smoother(0.85, [0, 0, 0, 0, 0]);
+
+		var onFailSoHard = function(e) {
+			console.log('Reeeejected!', e);
+		};
+
+		var detect = function() {
+
+			if (video.readyState === video.HAVE_ENOUGH_DATA) {
+				$(video).objectdetect(
+						"all",
+						{
+							scaleMin : 3,
+							scaleFactor : 1.1,
+							classifier : objectdetect.frontalface
+						},
+						function(coords) {
+							console.log(coords);
+							if (coords[0]) {
+								coords = smoother.smooth(coords[0]);
+								$("#detectRect").css(
+										{
+											"left" : ~~(coords[0] + coords[2]
+													* 1.0 / 8 + $(video)
+													.offset().left)
+													+ "px",
+											"top" : ~~(coords[1] + coords[3]
+													* 0.8 / 8 + $(video)
+													.offset().top)
+													+ "px",
+											"width" : ~~(coords[2] * 6 / 8)
+													+ "px",
+											"height" : ~~(coords[3] * 6 / 8)
+													+ "px",
+											"display" : "block"
+										});
+							} else {
+								$("#detectRect").css("display", "none");
+							}
+						});
+			}
+			
+			//detect();
+		};
 
 		if (navigator.getUserMedia) {
 			navigator.getUserMedia({
@@ -19,12 +73,16 @@
 				video : true
 			}, function(stream) {
 				video.src = window.URL.createObjectURL(stream);
+				
+				setInterval(function(){detect();}, 1000);
 			}, onFailSoHard);
 		} else {
 			video.src = 'somevideo.webm'; // fallback.
 		}
 	</script>
 
+
+<input type="button" onclick="javascript:detect()" >
 
 </body>
 
